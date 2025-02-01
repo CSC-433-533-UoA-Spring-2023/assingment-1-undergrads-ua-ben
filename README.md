@@ -1,5 +1,5 @@
 Author: {FirstName LastName} [{UA Email}]  
-Course: Undergrad 433
+Course: Grad 533 or Undergrad 433
 Date: [Month]. [Day], 2025
 
 **PLEASE UPDATE THIS README TO INCLUDE:**
@@ -16,7 +16,7 @@ Description:
 Included files (**PLEASE ADD/UPDATE THIS LIST**):
 * index.html    -- a sample html file with a canvas
 * a01.js        -- a sample javascript file for functionality with the image uploading, and a method to parse PPM images
-* Math.js		-- some math functions that you can use and extend yourself
+* MathUtilities.js		-- some math functions that you can use and extend yourself. It contains matrix manipulations
 * bunny.ppm     -- a test image
 
 
