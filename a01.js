@@ -16,6 +16,9 @@ var width = 0;
 var height = 0;
 // The image data
 var ppm_img_data;
+var canvas_pixels;
+
+var current_render_request = -1;
 
 //Function to process upload
 var upload = function () {
@@ -30,6 +33,13 @@ var upload = function () {
             //if successful, file data has the contents of the uploaded file
             var file_data = fReader.result;
             parsePPM(file_data);
+			
+			if (current_render_request >= 0)
+			{
+				cancelAnimationFrame(current_render_request);
+				canvas_pixels = null;
+			}
+			render();
 
             /*
             * TODO: ADD CODE HERE TO DO 2D TRANSFORMATION and ANIMATION
@@ -40,8 +50,9 @@ var upload = function () {
             // *** The code below is for the template to show you how to use matrices and update pixels on the canvas.
             // *** Modify/remove the following code and implement animation
 
+			/*
 	    // Create a new image data object to hold the new image
-            var newImageData = ctx.createImageData(width, height);
+        var newImageData = ctx.createImageData(width, height);
 	    var transMatrix = GetTranslationMatrix(0, height);// Translate image
 	    var scaleMatrix = GetScalingMatrix(1, -1);// Flip image y axis
 	    var matrix = MultiplyMatrixMatrix(transMatrix, scaleMatrix);// Mix the translation and scale matrices
@@ -68,6 +79,7 @@ var upload = function () {
 	    
 	    // Show matrix
             showMatrix(matrix);
+			*/
         }
     }
 }
@@ -86,6 +98,19 @@ function showMatrix(matrix){
 
 // Sets the color of a pixel in the new image data
 function setPixelColor(newImageData, samplePixel, i){
+
+	if (samplePixel[0] >= width || samplePixel[0] < 0)
+	{
+		newImageData.data[i + 3] = 0;
+		return;
+	}
+
+	if (samplePixel[1] >= height || samplePixel[1] < 0)
+	{
+		newImageData.data[i + 3] = 0;
+		return;
+	}
+
     var offset = ((samplePixel[1] - 1) * width + samplePixel[0] - 1) * 4;
 
     // Set the new pixel color
@@ -156,3 +181,60 @@ function parsePPM(file_data){
 
 //Connect event listeners
 input.addEventListener("change", upload);
+
+
+time = 0;
+
+
+var canvas_pixels = null;
+
+function render()
+{
+	console.log("==FRAME START==");
+
+	var dimensionsSq = 600.0;
+	
+	if (canvas_pixels == null)
+	{
+		canvas_pixels = ctx.createImageData(width, height);
+	}
+
+	var correct_aspect_ratio = GetScalingMatrix(width / dimensionsSq, height / dimensionsSq);
+	var tranlate_to_origin = GetTranslationMatrix(width / 2.0, height / 2.0);
+	var rotate = GetRotationMatrix(time * 5.0);
+	var untranlate_to_origin = GetTranslationMatrix(width / -2.0, height / -2.0);
+
+	var matrix = MultiplyMatrixMatrix(tranlate_to_origin, correct_aspect_ratio);
+	matrix = MultiplyMatrixMatrix(matrix, rotate);
+	matrix = MultiplyMatrixMatrix(matrix, untranlate_to_origin);
+
+    // Loop through all the pixels in the image and set its color
+    for (var i = 0; i < canvas_pixels.data.length; i += 4) 
+	{
+        // Get the pixel location in x and y with (0,0) being the top left of the image
+        var pixel = [Math.floor(i / 4) % width, 
+                     Math.floor(i / 4) / width, 1];
+        
+        // Get the location of the sample pixel
+        var samplePixel = MultiplyMatrixVector(matrix, pixel);
+
+        // Round to nearest pixel.
+        samplePixel[0] = Math.round(samplePixel[0]);
+        samplePixel[1] = Math.round(samplePixel[1]);
+
+        setPixelColor(canvas_pixels, samplePixel, i);
+    }
+	
+	showMatrix(matrix);
+
+	// This works!
+	//ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.putImageData(canvas_pixels, canvas.width/2 - width/2, canvas.height/2 - height/2);
+    // ctx.putImageData(canvas_pixels, canvas.width/2 - width/2, canvas.height/2 - height/2);
+    // ctx.putImageData(canvas_pixels, 0, 0);
+    // ctx.putImageData(canvas_pixels, canvas.width/2 - width/2, canvas.height/2 - height/2);
+	current_render_request = requestAnimationFrame(render);
+	
+	time += 1;
+	console.log("==FRAME COMPLETE==" + time.toString());
+}
