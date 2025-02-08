@@ -40,46 +40,6 @@ var upload = function () {
 				canvas_pixels = null;
 			}
 			render();
-
-            /*
-            * TODO: ADD CODE HERE TO DO 2D TRANSFORMATION and ANIMATION
-            * Modify any code if needed
-            * Hint: Write a rotation method, and call WebGL APIs to reuse the method for animation
-            */
-	    
-            // *** The code below is for the template to show you how to use matrices and update pixels on the canvas.
-            // *** Modify/remove the following code and implement animation
-
-			/*
-	    // Create a new image data object to hold the new image
-        var newImageData = ctx.createImageData(width, height);
-	    var transMatrix = GetTranslationMatrix(0, height);// Translate image
-	    var scaleMatrix = GetScalingMatrix(1, -1);// Flip image y axis
-	    var matrix = MultiplyMatrixMatrix(transMatrix, scaleMatrix);// Mix the translation and scale matrices
-            
-            // Loop through all the pixels in the image and set its color
-            for (var i = 0; i < ppm_img_data.data.length; i += 4) {
-
-                // Get the pixel location in x and y with (0,0) being the top left of the image
-                var pixel = [Math.floor(i / 4) % width, 
-                             Math.floor(i / 4) / width, 1];
-        
-                // Get the location of the sample pixel
-                var samplePixel = MultiplyMatrixVector(matrix, pixel);
-
-                // Floor pixel to integer
-                samplePixel[0] = Math.floor(samplePixel[0]);
-                samplePixel[1] = Math.floor(samplePixel[1]);
-
-                setPixelColor(newImageData, samplePixel, i);
-            }
-
-            // Draw the new image
-            ctx.putImageData(newImageData, canvas.width/2 - width/2, canvas.height/2 - height/2);
-	    
-	    // Show matrix
-            showMatrix(matrix);
-			*/
         }
     }
 }
@@ -190,8 +150,6 @@ var canvas_pixels = null;
 
 function render()
 {
-	console.log("==FRAME START==");
-
 	var dimensionsSq = 600.0;
 	
 	if (canvas_pixels == null)
@@ -202,10 +160,13 @@ function render()
 	var correct_aspect_ratio = GetScalingMatrix(width / dimensionsSq, height / dimensionsSq);
 	var tranlate_to_origin = GetTranslationMatrix(width / 2.0, height / 2.0);
 	var rotate = GetRotationMatrix(time * 5.0);
+	var scale = 1.0; // TODO scale by angle
+	var uniform_scale = GetScalingMatrix(scale, scale);
 	var untranlate_to_origin = GetTranslationMatrix(width / -2.0, height / -2.0);
 
 	var matrix = MultiplyMatrixMatrix(tranlate_to_origin, correct_aspect_ratio);
 	matrix = MultiplyMatrixMatrix(matrix, rotate);
+	matrix = MultiplyMatrixMatrix(matrix, uniform_scale);
 	matrix = MultiplyMatrixMatrix(matrix, untranlate_to_origin);
 
     // Loop through all the pixels in the image and set its color
@@ -228,13 +189,8 @@ function render()
 	showMatrix(matrix);
 
 	// This works!
-	//ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.putImageData(canvas_pixels, canvas.width/2 - width/2, canvas.height/2 - height/2);
-    // ctx.putImageData(canvas_pixels, canvas.width/2 - width/2, canvas.height/2 - height/2);
-    // ctx.putImageData(canvas_pixels, 0, 0);
-    // ctx.putImageData(canvas_pixels, canvas.width/2 - width/2, canvas.height/2 - height/2);
 	current_render_request = requestAnimationFrame(render);
 	
 	time += 1;
-	console.log("==FRAME COMPLETE==" + time.toString());
 }
