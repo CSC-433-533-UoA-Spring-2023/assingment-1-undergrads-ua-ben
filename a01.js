@@ -159,8 +159,13 @@ function render()
 
 	var correct_aspect_ratio = GetScalingMatrix(width / dimensionsSq, height / dimensionsSq);
 	var tranlate_to_origin = GetTranslationMatrix(width / 2.0, height / 2.0);
-	var rotate = GetRotationMatrix(time * 5.0);
-	var scale = 1.0; // TODO scale by angle
+	var theta = time * 5.0;
+	var rotate = GetRotationMatrix(theta);
+
+	var theta_rad_mod = (theta * (3.1415 / 180.0)) % (3.1415 / 2.0); 
+	var new_width = ((Math.sin(theta_rad_mod) + Math.cos(theta_rad_mod)) * dimensionsSq);
+	var scale = new_width / dimensionsSq;
+	console.log(scale.toString());
 	var uniform_scale = GetScalingMatrix(scale, scale);
 	var untranlate_to_origin = GetTranslationMatrix(width / -2.0, height / -2.0);
 
