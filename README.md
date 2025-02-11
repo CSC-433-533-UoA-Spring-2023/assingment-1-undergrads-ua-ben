@@ -12,7 +12,7 @@ Executing program:
 
 
 Description:
-
+The program can be run by opening the index.html file in a browser. Program shows a user selected image on the screen rotating at a constant rate. The image will scale such that it never leaves the borders of a bounding square (bonus!).
 
 Included files (**PLEASE ADD/UPDATE THIS LIST**):
 * index.html    -- a sample html file with a canvas
