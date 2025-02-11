@@ -5,7 +5,6 @@
   Email: amesmaieeli@email.arizona.edu
 */
 
-
 //access DOM elements we'll use
 var input = document.getElementById("load_image");
 var canvas = document.getElementById('canvas');
@@ -14,10 +13,17 @@ var ctx = canvas.getContext('2d');
 // The width and height of the image
 var width = 0;
 var height = 0;
+
 // The image data
 var ppm_img_data;
-var canvas_pixels;
 
+// Contains all pixels rendered to the canvas.
+var canvas_pixels = null;
+
+// Current number of elapsed frames (since page load).
+var elapsed_frames = 0;
+
+// ID of the current active render request.
 var current_render_request = -1;
 
 //Function to process upload
@@ -106,14 +112,17 @@ function parsePPM(file_data){
         }
         counter ++;
     }
+
     console.log("Format: " + format);
     console.log("Width: " + width);
     console.log("Height: " + height);
     console.log("Max Value: " + max_v);
+
     /*
      * Extract Pixel Data
      */
     var bytes = new Uint8Array(3 * width * height);  // i-th R pixel is at 3 * i; i-th G is at 3 * i + 1; etc.
+
     // i-th pixel is on Row i / width and on Column i % width
     // Raw data must be last 3 X W X H bytes of the image file
     var raw_data = file_data.substring(file_data.length - width * height * 3);
@@ -121,11 +130,14 @@ function parsePPM(file_data){
         // convert raw data byte-by-byte
         bytes[i] = raw_data.charCodeAt(i);
     }
+
     // update width and height of canvas
     document.getElementById("canvas").setAttribute("width", window.innerWidth);
     document.getElementById("canvas").setAttribute("height", window.innerHeight);
+
     // create ImageData object
     var image_data = ctx.createImageData(width, height);
+
     // fill ImageData
     for(var i = 0; i < image_data.data.length; i+= 4){
         let pixel_pos = parseInt(i / 4);
@@ -134,68 +146,56 @@ function parsePPM(file_data){
         image_data.data[i + 2] = bytes[pixel_pos * 3 + 2]; // Blue ~ i + 2
         image_data.data[i + 3] = 255; // A channel is deafult to 255
     }
-    ctx.putImageData(image_data, canvas.width/2 - width/2, canvas.height/2 - height/2);
-    //ppm_img_data = ctx.getImageData(0, 0, canvas.width, canvas.height);   // This gives more than just the image I want??? I think it grabs white space from top left?
+
     ppm_img_data = image_data;
 }
 
-//Connect event listeners
-input.addEventListener("change", upload);
-
-
-time = 0;
-
-
-var canvas_pixels = null;
-
+// Main render loop.
+// Displays image on the canvas and enqueues the rendering of the next frame.
 function render()
 {
 	var dimensionsSq = 600.0;
 	
 	if (canvas_pixels == null)
 	{
-		canvas_pixels = ctx.createImageData(width, height);
+		canvas_pixels = ctx.createImageData(dimensionsSq, dimensionsSq);
 	}
 
-	var correct_aspect_ratio = GetScalingMatrix(width / dimensionsSq, height / dimensionsSq);
 	var tranlate_to_origin = GetTranslationMatrix(width / 2.0, height / 2.0);
-	var theta = time * 5.0;
-	var rotate = GetRotationMatrix(theta);
-
-	var theta_rad_mod = (theta * (3.1415 / 180.0)) % (3.1415 / 2.0); 
-	var new_width = ((Math.sin(theta_rad_mod) + Math.cos(theta_rad_mod)) * dimensionsSq);
-	var scale = new_width / dimensionsSq;
-	console.log(scale.toString());
+	var correct_aspect_ratio = GetScalingMatrix(width / dimensionsSq, height / dimensionsSq);
+	var rotate = GetRotationMatrix(elapsed_frames * 5.0);
+	var scale = 1.0; // TODO scale by angle
 	var uniform_scale = GetScalingMatrix(scale, scale);
-	var untranlate_to_origin = GetTranslationMatrix(width / -2.0, height / -2.0);
+	var untranlate_to_origin = GetTranslationMatrix(dimensionsSq / -2.0, dimensionsSq / -2.0);
 
 	var matrix = MultiplyMatrixMatrix(tranlate_to_origin, correct_aspect_ratio);
 	matrix = MultiplyMatrixMatrix(matrix, rotate);
-	matrix = MultiplyMatrixMatrix(matrix, uniform_scale);
 	matrix = MultiplyMatrixMatrix(matrix, untranlate_to_origin);
 
     // Loop through all the pixels in the image and set its color
     for (var i = 0; i < canvas_pixels.data.length; i += 4) 
 	{
         // Get the pixel location in x and y with (0,0) being the top left of the image
-        var pixel = [Math.floor(i / 4) % width, 
-                     Math.floor(i / 4) / width, 1];
+        var pixel = [Math.floor(i / 4) % dimensionsSq, 
+                     Math.floor(i / 4) / dimensionsSq, 1];
         
         // Get the location of the sample pixel
-        var samplePixel = MultiplyMatrixVector(matrix, pixel);
+        var sample_pixel = MultiplyMatrixVector(matrix, pixel);
 
         // Round to nearest pixel.
-        samplePixel[0] = Math.round(samplePixel[0]);
-        samplePixel[1] = Math.round(samplePixel[1]);
+        sample_pixel[0] = Math.round(sample_pixel[0]);
+        sample_pixel[1] = Math.round(sample_pixel[1]);
 
-        setPixelColor(canvas_pixels, samplePixel, i);
+        setPixelColor(canvas_pixels, sample_pixel, i);
     }
 	
 	showMatrix(matrix);
 
-	// This works!
-    ctx.putImageData(canvas_pixels, canvas.width/2 - width/2, canvas.height/2 - height/2);
+    ctx.putImageData(canvas_pixels, canvas.width / 2 - dimensionsSq / 2, canvas.height / 2 - dimensionsSq / 2);
 	current_render_request = requestAnimationFrame(render);
 	
-	time += 1;
+	elapsed_frames += 1;
 }
+
+//Connect event listeners
+input.addEventListener("change", upload);
