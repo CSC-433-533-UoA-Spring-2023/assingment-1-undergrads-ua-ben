@@ -154,30 +154,48 @@ function parsePPM(file_data){
 // Displays image on the canvas and enqueues the rendering of the next frame.
 function render()
 {
-	var dimensionsSq = 600.0;
+	var image_size_sq = 600.0;
 	
 	if (canvas_pixels == null)
 	{
-		canvas_pixels = ctx.createImageData(dimensionsSq, dimensionsSq);
+		canvas_pixels = ctx.createImageData(image_size_sq, image_size_sq);
 	}
 
-	var tranlate_to_origin = GetTranslationMatrix(width / 2.0, height / 2.0);
-	var correct_aspect_ratio = GetScalingMatrix(width / dimensionsSq, height / dimensionsSq);
-	var rotate = GetRotationMatrix(elapsed_frames * 5.0);
-	var scale = 1.0; // TODO scale by angle
-	var uniform_scale = GetScalingMatrix(scale, scale);
-	var untranlate_to_origin = GetTranslationMatrix(dimensionsSq / -2.0, dimensionsSq / -2.0);
+	// Rotate 5 degrees per frame
+	var rotation_degrees = elapsed_frames * 5;
 
-	var matrix = MultiplyMatrixMatrix(tranlate_to_origin, correct_aspect_ratio);
+	// translation and aspect ratio matrices
+	var translate_to_origin = GetTranslationMatrix(width / 2.0, height / 2.0);
+	var correct_aspect_ratio = GetScalingMatrix(width / image_size_sq, height / image_size_sq);
+	var rotate = GetRotationMatrix(rotation_degrees);
+
+	// Scale based on the current angle so corners stay in the bounds
+	var theta = (rotation_degrees * Math.PI / 180.0) % (Math.PI / 2.0);
+	var rot_width = image_size_sq * (Math.sin(theta) + Math.cos(theta));
+	var scale = scale = rot_width / image_size_sq;
+	var uniform_scale = GetScalingMatrix(scale, scale);
+
+	// Restore from origin
+	var translate_from_origin = GetTranslationMatrix(image_size_sq/ -2.0, image_size_sq / -2.0);
+
+	// Scale from center
+	var matrix = MultiplyMatrixMatrix(translate_to_origin, correct_aspect_ratio);
+
+	// Rotate around center
 	matrix = MultiplyMatrixMatrix(matrix, rotate);
-	matrix = MultiplyMatrixMatrix(matrix, untranlate_to_origin);
+
+	// Scale to fit inside of the @image_size_sq
+	matrix = MultiplyMatrixMatrix(matrix, uniform_scale);
+
+	// Restore to canvas space
+	matrix = MultiplyMatrixMatrix(matrix, translate_from_origin);
 
     // Loop through all the pixels in the image and set its color
     for (var i = 0; i < canvas_pixels.data.length; i += 4) 
 	{
         // Get the pixel location in x and y with (0,0) being the top left of the image
-        var pixel = [Math.floor(i / 4) % dimensionsSq, 
-                     Math.floor(i / 4) / dimensionsSq, 1];
+        var pixel = [Math.floor(i / 4) % image_size_sq, 
+                     Math.floor(i / 4) / image_size_sq, 1];
         
         // Get the location of the sample pixel
         var sample_pixel = MultiplyMatrixVector(matrix, pixel);
@@ -189,12 +207,14 @@ function render()
         setPixelColor(canvas_pixels, sample_pixel, i);
     }
 	
+	// dump matrix 
 	showMatrix(matrix);
 
-    ctx.putImageData(canvas_pixels, canvas.width / 2 - dimensionsSq / 2, canvas.height / 2 - dimensionsSq / 2);
-	current_render_request = requestAnimationFrame(render);
-	
+	// dump image to canvas
+    ctx.putImageData(canvas_pixels, canvas.width / 2 -  image_size_sq / 2, canvas.height / 2 - image_size_sq / 2);
+
 	elapsed_frames += 1;
+	current_render_request = requestAnimationFrame(render);
 }
 
 //Connect event listeners
